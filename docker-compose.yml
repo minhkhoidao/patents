@@ -1,0 +1,86 @@
+services:
+  patent_db:
+    image: postgres:15
+    container_name: patent_db
+    environment:
+      POSTGRES_DB: patent_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5432:5432" # External:Internal ports
+    volumes:
+      - patent_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d patent_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - go-nginx-network
+    restart: unless-stopped
+
+  user_db:
+    image: postgres:15
+    container_name: user_db
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5433:5432" # External:Internal ports
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d user_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - go-nginx-network
+    restart: unless-stopped
+
+  go-nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: go-nginx
+    environment:
+      - PATENT_DB_HOST=patent_db
+      - PATENT_DB_USER=postgres
+      - PATENT_DB_PASSWORD=123456
+      - PATENT_DB_NAME=patent_db
+      - PATENT_DB_PORT=5432
+      - USER_DB_HOST=user_db
+      - USER_DB_USER=postgres
+      - USER_DB_PASSWORD=123456
+      - USER_DB_NAME=user_db
+      - USER_DB_PORT=5432
+    ports:
+      - "8080:8080"
+    networks:
+      - go-nginx-network
+    depends_on:
+      patent_db:
+        condition: service_healthy
+      user_db:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - go-nginx
+    networks:
+      - go-nginx-network
+
+networks:
+  go-nginx-network:
+    driver: bridge
+
+volumes:
+  patent_db_data:
+  user_db_data:
