@@ -55,6 +55,9 @@ services:
       - USER_DB_PASSWORD=123456
       - USER_DB_NAME=user_db
       - USER_DB_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=123456
     ports:
       - "8080:8080"
     networks:
@@ -77,6 +80,23 @@ services:
     networks:
       - go-nginx-network
 
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes # Enable persistence
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - go-nginx-network
+    restart: unless-stopped
+
 networks:
   go-nginx-network:
     driver: bridge
@@ -84,3 +104,4 @@ networks:
 volumes:
   patent_db_data:
   user_db_data:
+  redis_data:

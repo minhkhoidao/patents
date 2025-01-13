@@ -65,8 +65,12 @@ func main() {
 		panic("failed to migrate database")
 	}
 
+	redisClient := database.NewRedisClient()
+	defer redisClient.Close()
 	patentRepo := repositories.NewPatentRepository(patentDB)
-	patentService := services.NewPatentService(patentRepo)
+	redisService := services.NewRedisService(redisClient.GetClient())
+
+	patentService := services.NewPatentService(patentRepo, redisService)
 	patentController := controllers.NewPatentController(patentService)
 	router := routes.SetupRouter(patentController)
 
